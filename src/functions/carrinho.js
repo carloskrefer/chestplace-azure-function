@@ -15,35 +15,41 @@ app.http('carrinho', {
     authLevel: 'anonymous',
     handler: async (request, context) => {
         let erroBanco = false;
+        let resultado;
 
-        run().catch((error) => {
+        try {
+            resultado = await run();
+        } catch (error) {
             console.log(error);
             erroBanco = true;
-        });
+        }
 
         if (erroBanco) {
             return { body: `Erro no MongoDB!` };
         } else {
-            return { body: `Hello, tudo certo no MongoDB!` };
+            return { body: `Resultado: ${JSON.stringify(resultado)}` };
         }
-
-        // context.log(`Http function processed request for url "${request.url}"`);
-
-        // const name = request.query.get('name') || await request.text() || 'world';
-
-        // return { body: `Hello, ${name}!` };
     }
 });
 
 
 
 async function run() {
-  try {
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    await client.close();
-  }
+    try {
+        await client.connect();
+        console.log("Conectado ao MongoDB!");
+
+        const database = client.db("chestplace");
+        const collection = database.collection("carrinhos");
+
+        // Busca documentos com produto_id igual a 3
+        const query = { produto_id: 3 };
+        const resultado = await collection.find(query).toArray();
+
+        return resultado;
+
+    } finally {
+        await client.close();
+    }
 }
 
