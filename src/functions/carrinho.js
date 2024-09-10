@@ -1,6 +1,6 @@
 const { app } = require('@azure/functions');
 
-app.http('create-carrinho', {
+app.http('carrinho', {
     methods: ['GET', 'POST'],
     authLevel: 'anonymous',
     handler: async (request, context) => {
@@ -11,3 +11,4 @@ app.http('create-carrinho', {
         return { body: `Hello, ${name}!` };
     }
 });
+
