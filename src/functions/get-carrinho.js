@@ -22,7 +22,7 @@ app.http('getCarrinho', {
             console.log("2");
             return {
                 status: 400,
-                message: "Parâmetro 'compradorId' não foi informado."
+                body: "Parâmetro 'compradorId' não foi informado."
             };
         }
 
@@ -34,7 +34,7 @@ app.http('getCarrinho', {
             console.log("4");
             return {
                 status: 500,
-                message: error
+                body: error
             };
         }
 
@@ -43,7 +43,7 @@ app.http('getCarrinho', {
             console.log("5");
             return {
                 status: 404,
-                message: "Nenhum carrinho encontrado para o 'compradorId' informado."
+                body: "Nenhum carrinho encontrado para o 'compradorId' informado."
             };
         }
 
