@@ -11,6 +11,8 @@ const mongoClient = new MongoClient(mongoUri, {
       deprecationErrors: true,
     }
 });
+const mongoDbName = "chestplace";
+const mongoCollectionName = "carrinhos";
 
 /* HTTP status codes */
 const statusCode = {
@@ -50,7 +52,7 @@ function getErrorResponseByException(exception) {
 app.http('getCarrinho', {
     methods: ['GET'],
     authLevel: 'anonymous',
-    route: 'carrinho',
+    route: 'carrinhos',
     handler: async (request, context) => {
         try {
             console.log("1");
@@ -67,9 +69,10 @@ async function getResponse(request) {
 
     switch (request.method) {
         case 'GET':
-            response = await getDataGetRequest(request);
+            response = await getData(request);
             break;
         case 'POST':
+            response = await postData(request);
         case 'PUT':
         case 'DELETE':
             response = "";
@@ -80,12 +83,18 @@ async function getResponse(request) {
     return { body: JSON.stringify(response) };
 }
 
-async function getDataGetRequest(request) {
+async function getData(request) {
     console.log("4");
     validateGetRequestQueryParam(request);
-    const carrinho = await getOneCarrinhoByCompradorId(request);
+    const carrinho = await getOneCarrinhoByCompradorId(
+        Number(request.query.get('compradorId'))
+    );
     validateGetRequestResult(carrinho);
     return carrinho;
+}
+
+async function postData(request) {
+
 }
 
 function validateGetRequestQueryParam(request) {
@@ -107,16 +116,40 @@ function isQueryParamProvided(request, queryParamName) {
     return Boolean(request.query.get(queryParamName));
 }
 
-async function getOneCarrinhoByCompradorId(request) {
+// async function getOneCarrinhoByCompradorId(request) {
+//     try { 
+//         await mongoClient.connect();
+//         const database = mongoClient.db("chestplace");
+//         const collection = database.collection("carrinhos");
+//         console.log("7");
+//         const compradorId = Number(request.query.get('compradorId'));
+//         const query = { comprador_id: compradorId };
+
+//         return await collection.findOne(query);
+//     } catch (exception) {
+//         const message = 
+//             'Ocorreu um erro durante a conexão com o banco de dados: '
+//             + exception.message;
+//         throw new DatabaseConnectionException(message);
+//     } finally {
+//         await mongoClient.close();
+//     }
+// }
+
+async function getOneCarrinhoByCompradorId(compradorId) {
+    const query = { comprador_id: compradorId };
+
+    return executeDatabaseCommand(mongoDbCollection =>
+        mongoDbCollection.findOne(query)
+    );
+}
+
+async function executeDatabaseCommand(callback) {
     try { 
         await mongoClient.connect();
-        const database = mongoClient.db("chestplace");
-        const collection = database.collection("carrinhos");
-        console.log("7");
-        const compradorId = Number(request.query.get('compradorId'));
-        const query = { comprador_id: compradorId };
-
-        return await collection.findOne(query);
+        const database = mongoClient.db(mongoDbName);
+        const collection = database.collection(mongoCollectionName);
+        return await callback(collection);
     } catch (exception) {
         const message = 
             'Ocorreu um erro durante a conexão com o banco de dados: '
