@@ -1,8 +1,10 @@
+/* Imports */
 const { app } = require('@azure/functions');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = "mongodb+srv://carloskrefer:3AFSiTE3n8EY0Q7Q@chestplace.pvyxw.mongodb.net/?retryWrites=true&w=majority&appName=chestplace";
-const client = new MongoClient(uri, {
+/* MongoDB constants */
+const mongoUri = "mongodb+srv://carloskrefer:3AFSiTE3n8EY0Q7Q@chestplace.pvyxw.mongodb.net/?retryWrites=true&w=majority&appName=chestplace";
+const mongoClient = new MongoClient(mongoUri, {
     serverApi: {
       version: ServerApiVersion.v1,
       strict: true,
@@ -10,59 +12,119 @@ const client = new MongoClient(uri, {
     }
 });
 
+/* HTTP status codes */
+const statusCode = {
+    badRequest: 400,
+    notFound: 404,
+    internalServerError: 500
+};
+
+/* Exceptions */
+function QueryParamNotProvidedException(message) {
+    this.message = message;
+    this.name = QueryParamNotProvidedException.name;
+    this.statusCode = statusCode.badRequest;
+}
+
+function RecordNotFoundException(message) {
+    this.message = message;
+    this.name = RecordNotFoundException.name;
+    this.statusCode = statusCode.notFound;
+}
+
+function DatabaseConnectionException(message) {
+    this.message = message;
+    this.name = DatabaseConnectionException.name;
+    this.statusCode = statusCode.internalServerError;
+}
+
+/* Other helper functions */
+function getErrorResponseByException(exception) {
+    return {
+        status: exception.statusCode,
+        body: exception.message
+    };
+}
+
+/* Controller */
 app.http('getCarrinho', {
     methods: ['GET'],
     authLevel: 'anonymous',
     route: 'carrinho',
     handler: async (request, context) => {
-        const isQueryParamProvided = Boolean(request.query.get('compradorId'));
-        console.log("1");
-        console.log(request.query.compradorId)
-        if (!isQueryParamProvided) {
-            console.log("2");
-            return {
-                status: 400,
-                body: "Parâmetro 'compradorId' não foi informado."
-            };
-        }
-
-        let carrinho;
-        console.log("3");
         try {
-            carrinho = await getOneCarrinhoByCompradorId(request);
-        } catch(error) {
-            console.log("4");
-            return {
-                status: 500,
-                body: error
-            };
+            console.log("1");
+            return await getResponse(request);
+        } catch(exception) {
+            console.log("2");
+            return getErrorResponseByException(exception);
         }
-
-        const isRecordFound = Boolean(carrinho);
-        if (!isRecordFound) {
-            console.log("5");
-            return {
-                status: 404,
-                body: "Nenhum carrinho encontrado para o 'compradorId' informado."
-            };
-        }
-
-        console.log("6");
-        return { body: JSON.stringify(carrinho)};
     }
 });
 
+async function getResponse(request) {
+    let response;
+
+    switch (request.method) {
+        case 'GET':
+            response = await getDataGetRequest(request);
+            break;
+        case 'POST':
+        case 'PUT':
+        case 'DELETE':
+            response = "";
+            break;
+    }
+
+    console.log("3");
+    return { body: JSON.stringify(response) };
+}
+
+async function getDataGetRequest(request) {
+    console.log("4");
+    validateGetRequestQueryParam(request);
+    const carrinho = await getOneCarrinhoByCompradorId(request);
+    validateGetRequestResult(carrinho);
+    return carrinho;
+}
+
+function validateGetRequestQueryParam(request) {
+    if (!isQueryParamProvided(request, 'compradorId')) {
+        const message = 'Query parameter "compradorId" não foi informado.';
+        throw new QueryParamNotProvidedException(message);
+    }
+}
+
+function validateGetRequestResult(carrinho) {
+    const isRecordFound = Boolean(carrinho);
+    if (!isRecordFound) {
+        const message = 'Nenhum carrinho encontrado para a sua busca.';
+        throw new RecordNotFoundException(message);
+    }
+}
+
+function isQueryParamProvided(request, queryParamName) {
+    return Boolean(request.query.get(queryParamName));
+}
+
 async function getOneCarrinhoByCompradorId(request) {
-    try {
-        await client.connect();
-        const database = client.db("chestplace");
+    try { 
+        await mongoClient.connect();
+        const database = mongoClient.db("chestplace");
         const collection = database.collection("carrinhos");
         console.log("7");
         const compradorId = Number(request.query.get('compradorId'));
         const query = { comprador_id: compradorId };
 
         return await collection.findOne(query);
+    } catch (exception) {
+        const message = 
+            'Ocorreu um erro durante a conexão com o banco de dados: '
+            + exception.message;
+        throw new DatabaseConnectionException(message);
     } finally {
-        await client.close();
+        await mongoClient.close();
     }
 }
+
+
