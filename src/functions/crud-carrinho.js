@@ -167,6 +167,66 @@ class CarrinhoController {
                 }
             }
         });
+
+        app.http('put-carrinho', {
+            methods: ['PUT'],
+            authLevel: 'anonymous',
+            route: 'carrinhos/{compradorId}',
+            handler: async (request, context) => {
+                try {
+                    return await this.#getPutResponse(request);
+                } catch (exception) {
+                    return this.#getErrorResponseByException(exception);
+                }
+            }
+        });
+
+        app.http('get-carrinho', {
+            methods: ['GET'],
+            authLevel: 'anonymous',
+            route: 'carrinhos/{compradorId}',
+            handler: async (request, context) => {
+                try {
+                    return await this.#getGetResponse(request);
+                } catch (exception) {
+                    return this.#getErrorResponseByException(exception);
+                }
+            }
+        });
+    }
+
+    async #getGetResponse(request) {
+        const compradorId = Number(request.params.compradorId);
+        ValidatorHelper.validateNumberRequired(compradorId, 'compradorId');
+        const carrinho = await this.carrinhoService.selectCarrinho(compradorId);
+
+        return { body: JSON.stringify(carrinho) };
+    }
+
+    async #getPutResponse(request) {
+        const compradorId = Number(request.params.compradorId);
+        ValidatorHelper.validateNumberRequired(compradorId, 'compradorId');
+        const { produtos } = JSON.parse(await request.text());
+
+        let produtosInstances = [];
+        produtos.forEach(produto => {
+            const produtoInstance = new ProdutoModel();
+            produtoInstance.id = Number(produto.id);
+            produtoInstance.titulo = produto.titulo;
+            produtoInstance.preco = Number(produto.preco);
+            produtoInstance.preco_promocional = Number(produto.preco_promocional);
+            produtoInstance.descricao = produto.descricao;
+            produtosInstances.push(produtoInstance);
+        });
+
+        const carrinhoModel = new CarrinhoModel();
+        carrinhoModel.compradorId = Number(compradorId);
+        carrinhoModel.produtos = produtosInstances;
+        carrinhoModel.validate();
+
+        await this.carrinhoService.updateCarrinho(carrinhoModel);
+
+        return { status: statusCode.noContent };
     }
 
     async #getDeleteResponse(request) {
@@ -233,6 +293,17 @@ class CarrinhoService {
         return this.instance;
     }
 
+    async selectCarrinho(compradorId) {
+        const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(compradorId);
+
+        if (!carrinho)
+            throw new RecordNotFoundException(
+                'Não há carrinho para o "compradorId" informado.'
+            );
+        
+        return carrinho;
+    }
+
     async insertCarrinho(carrinhoModel) {
         const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(carrinhoModel.compradorId);
 
@@ -245,7 +316,7 @@ class CarrinhoService {
     }
 
     async deleteCarrinho(compradorId) {
-        const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(compradorId); 
+        const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(compradorId);
 
         if (!carrinho)
             throw new RecordNotFoundException(
@@ -253,6 +324,17 @@ class CarrinhoService {
             );
 
         await this.carrinhoDAO.deleteOneCarrinhoByCompradorId(compradorId);
+    }
+
+    async updateCarrinho(carrinhoModel) {
+        const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(carrinhoModel.compradorId);
+
+        if (!carrinho)
+            throw new RecordNotFoundException(
+                'Não há carrinho para o "compradorId" informado.'
+            );
+
+        await this.carrinhoDAO.updateOneCarrinho(carrinhoModel);
     }
 }
 
@@ -276,6 +358,20 @@ class CarrinhoDAO {
         return this.instance;
     }
 
+    async updateOneCarrinho(carrinhoModel) {
+        const query = { compradorId: carrinhoModel.compradorId };
+
+        const updateDocument = {
+            $set: {
+                produtos: carrinhoModel.produtos,
+            },
+        };
+
+        await this.mongoDB.executeDatabaseCommand(mongoDbCollection =>
+            mongoDbCollection.updateOne(query, updateDocument)
+        );
+    }
+
     async getOneCarrinhoByCompradorId(compradorId) {
         const query = { compradorId: compradorId };
 
@@ -287,7 +383,7 @@ class CarrinhoDAO {
     async deleteOneCarrinhoByCompradorId(compradorId) {
         const query = { compradorId: compradorId };
 
-        return await this.mongoDB.executeDatabaseCommand(mongoDbCollection =>
+        await this.mongoDB.executeDatabaseCommand(mongoDbCollection =>
             mongoDbCollection.deleteOne(query)
         );
     }
