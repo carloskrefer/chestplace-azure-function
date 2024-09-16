@@ -64,6 +64,7 @@ class ValidatorHelper {
 /* HTTP status codes */
 const statusCode = {
     created: 201,
+    noContent: 204,
     badRequest: 400,
     notFound: 404,
     conflict: 409,
@@ -147,7 +148,20 @@ class CarrinhoController {
             route: 'carrinhos',
             handler: async (request, context) => {
                 try {
-                    return await this.#getResponse(request);
+                    return await this.#getPostResponse(request);
+                } catch (exception) {
+                    return this.#getErrorResponseByException(exception);
+                }
+            }
+        });
+
+        app.http('delete-carrinho', {
+            methods: ['DELETE'],
+            authLevel: 'anonymous',
+            route: 'carrinhos/{compradorId}',
+            handler: async (request, context) => {
+                try {
+                    return await this.#getDeleteResponse(request);
                 } catch (exception) {
                     return this.#getErrorResponseByException(exception);
                 }
@@ -155,7 +169,15 @@ class CarrinhoController {
         });
     }
 
-    async #getResponse(request) {
+    async #getDeleteResponse(request) {
+        const compradorId = Number(request.params.compradorId);
+        ValidatorHelper.validateNumberRequired(compradorId, 'compradorId');
+        await this.carrinhoService.deleteCarrinho(compradorId);
+
+        return { status: statusCode.noContent };
+    }
+
+    async #getPostResponse(request) {
         const { compradorId, produtos } = JSON.parse(await request.text());
 
         let produtosInstances = [];
@@ -221,6 +243,17 @@ class CarrinhoService {
 
         await this.carrinhoDAO.postOneCarrinho(carrinhoModel);
     }
+
+    async deleteCarrinho(compradorId) {
+        const carrinho = await this.carrinhoDAO.getOneCarrinhoByCompradorId(compradorId); 
+
+        if (!carrinho)
+            throw new RecordNotFoundException(
+                'Não há carrinho para o "compradorId" informado.'
+            );
+
+        await this.carrinhoDAO.deleteOneCarrinhoByCompradorId(compradorId);
+    }
 }
 
 // checar instanceof do argumento
@@ -248,6 +281,14 @@ class CarrinhoDAO {
 
         return await this.mongoDB.executeDatabaseCommand(mongoDbCollection =>
             mongoDbCollection.findOne(query)
+        );
+    }
+
+    async deleteOneCarrinhoByCompradorId(compradorId) {
+        const query = { compradorId: compradorId };
+
+        return await this.mongoDB.executeDatabaseCommand(mongoDbCollection =>
+            mongoDbCollection.deleteOne(query)
         );
     }
 
