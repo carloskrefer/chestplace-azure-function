@@ -365,7 +365,12 @@ class CarrinhoController {
         ValidatorHelper.validateNumberRequired(compradorId, 'compradorId');
         const carrinho = await this.carrinhoService.selectCarrinho(compradorId);
 
-        return { body: JSON.stringify(carrinho) };
+        return { 
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(carrinho) 
+        };
     }
 
     async #getPutResponse(request) {
