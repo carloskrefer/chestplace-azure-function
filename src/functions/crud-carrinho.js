@@ -118,21 +118,21 @@ class ValidatorHelper {
     static validateNumberRequired(value, description) {
         if (!NumberHelper.isNumber(value))
             throw new ParameterTypeException(
-                `Atributo "${description}" é obrigatório e deve ser um número.`
+                `Atributo ${description} é obrigatório e deve ser um número.`
             );
     }
 
     static validateStringRequired(value, description) {
         if (!value)
             throw new ParameterNotProvidedException(
-                `Atributo "${description}" é obrigatório e não pode ser nulo, vazio ou indefinido.`
+                `Atributo ${description} é obrigatório e não pode ser nulo, vazio ou indefinido.`
             );
     }
 
     static validateArray(array, description) {
         if (!Array.isArray(array))
             throw new ParameterTypeException(
-                `Atributo "${description}" deverá ser array.`
+                `Atributo ${description} deverá ser array.`
             );
     }
 }
@@ -192,7 +192,7 @@ class CarrinhoService {
 
         if (!carrinho)
             throw new RecordNotFoundException(
-                'Não há carrinho para o "compradorId" informado.'
+                'Não há carrinho para o compradorId informado.'
             );
 
         return carrinho;
@@ -215,7 +215,7 @@ class CarrinhoService {
 
         if (!carrinho)
             throw new RecordNotFoundException(
-                'Não há carrinho para o "compradorId" informado.'
+                'Não há carrinho para o compradorId informado.'
             );
 
         await this.carrinhoDAO.deleteOneCarrinhoByCompradorId(compradorId);
@@ -227,7 +227,7 @@ class CarrinhoService {
 
         if (!carrinho)
             throw new RecordNotFoundException(
-                'Não há carrinho para o "compradorId" informado.'
+                'Não há carrinho para o compradorId informado.'
             );
 
         await this.carrinhoDAO.updateOneCarrinho(carrinhoModel);
@@ -402,9 +402,12 @@ class CarrinhoController {
     }
 
     #getErrorResponseByException(exception) {
-        return {
+        return { 
+            headers: {
+                'Content-Type': 'application/json'
+            },
             status: exception.statusCode,
-            body: exception.message
+            body: JSON.stringify({message: exception.message})
         };
     }
 
