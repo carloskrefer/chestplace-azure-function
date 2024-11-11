@@ -358,6 +358,27 @@ class CarrinhoController {
                 }
             }
         });
+
+        app.serviceBusQueue('serviceBusQueueTrigger1', {
+            connection: 'MyServiceBusConnection',
+            queueName: 'fila-usuario-cadastro',
+            autoComplete: true,
+            handler: async (message, context) => {
+                try {
+                    await this.#postEmptyCarrinho(message);
+                } catch (exception) {
+                    return this.#getErrorResponseByException(exception);
+                }
+            },
+        });
+    }
+
+    async #postEmptyCarrinho(compradorId) {
+        const carrinhoModel = this.#mapDataToCarrinhoModel(compradorId, []);
+        carrinhoModel.validate();
+        await this.carrinhoService.insertCarrinho(carrinhoModel);
+
+        return { status: statusCode.created };
     }
 
     async #getGetResponse(request) {
