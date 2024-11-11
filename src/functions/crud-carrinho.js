@@ -361,7 +361,7 @@ class CarrinhoController {
 
         app.serviceBusQueue('serviceBusQueueTrigger1', {
             connection: 'MyServiceBusConnection',
-            queueName: 'fila-usuario-cadastro',
+            queueName: 'cadastro-usuario-carrinho',
             autoComplete: true,
             handler: async (message, context) => {
                 try {
